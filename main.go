@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/codegangsta/cli"
-	"github.com/jhaals/pugme"
+	"github.com/jhaals/pugme/pugme"
 	"os"
 	"strconv"
 )
