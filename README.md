@@ -15,4 +15,4 @@ Get pug urls
 
 Download 5 pugs
 
-  $ puginator download-pugs 5 /path/to/pugstore
+    $ puginator download-pugs 5 /path/to/pugstore
