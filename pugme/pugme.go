@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 )
 
 // Pugs is a bunch of jucy dogs
@@ -64,28 +63,27 @@ func DownloadPugs(count int, path string) {
 		fmt.Println(path + " does not exist...")
 		os.Exit(1)
 	}
-	result := make(chan string)
+	resc, errc := make(chan string), make(chan error)
 	pugs := RandomPugs(count)
-	var wg sync.WaitGroup
-	wg.Add(len(pugs))
 
 	for _, url := range pugs {
 		go func(url string) {
-			defer wg.Done()
 			resp, err := http.Get(url)
 			if err != nil {
-				fmt.Println(err)
+				errc <- err
 				return
 			}
 			defer resp.Body.Close()
 
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
+				errc <- err
 				return
 			}
 
 			filename, err := getFileName(url)
 			if err != nil {
+				errc <- err
 				return
 			}
 
@@ -93,19 +91,22 @@ func DownloadPugs(count int, path string) {
 
 			// Skip pug if it already exist
 			if fileExist(filePath) {
+				errc <- errors.New(filePath + " already exist")
 				return
 			}
 			// Store pug
 			ioutil.WriteFile(filePath, body, 0654)
-			result <- filePath
+			resc <- filePath
 		}(url)
 	}
 
-	go func() {
-		for filePath := range result {
-			fmt.Println(filePath)
+	for i := 0; i < len(pugs); i++ {
+		select {
+		case res := <-resc:
+			fmt.Println(res)
+		case err := <-errc:
+			fmt.Println(err)
 		}
-	}()
+	}
 
-	wg.Wait()
 }
