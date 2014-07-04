@@ -2,6 +2,7 @@ package pugme
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -9,35 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
-
-// Pug is just one dog
-type Pug struct {
-	Pug string
-}
 
 // Pugs is a bunch of jucy dogs
 type Pugs struct {
 	Pugs []string
-}
-
-// RandomPug returns a random pug URL
-func RandomPug() string {
-	resp, err := http.Get("http://pugme.herokuapp.com/random")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	r := new(Pug)
-	json.Unmarshal(body, r)
-	return r.Pug
 }
 
 // RandomPugs return a bunch of pugs
@@ -60,15 +38,14 @@ func RandomPugs(count int) []string {
 }
 
 // Get filename from URL
-func getFileName(URL string) string {
+func getFileName(URL string) (string, error) {
 	r, err := url.Parse(URL)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return "", errors.New("failed to parse url")
 	}
 
 	urlPath := strings.Split(r.Path, "/")
-	return urlPath[len(urlPath)-1]
+	return urlPath[len(urlPath)-1], nil
 }
 
 func fileExist(path string) bool {
@@ -87,30 +64,48 @@ func DownloadPugs(count int, path string) {
 		fmt.Println(path + " does not exist...")
 		os.Exit(1)
 	}
-
+	result := make(chan string)
 	pugs := RandomPugs(count)
+	var wg sync.WaitGroup
+	wg.Add(len(pugs))
 
-	for i := 0; i < count; i++ {
-		url := pugs[i]
-		resp, err := http.Get(url)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		defer resp.Body.Close()
+	for _, url := range pugs {
+		go func(url string) {
+			defer wg.Done()
+			resp, err := http.Get(url)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			defer resp.Body.Close()
 
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			continue
-		}
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return
+			}
 
-		filePath := filepath.Join(path, getFileName(url))
+			filename, err := getFileName(url)
+			if err != nil {
+				return
+			}
 
-		// Skip pug if it already exist
-		if fileExist(filePath) {
-			continue
-		}
-		// Store pug
-		ioutil.WriteFile(filePath, body, 0654)
+			filePath := filepath.Join(path, filename)
+
+			// Skip pug if it already exist
+			if fileExist(filePath) {
+				return
+			}
+			// Store pug
+			ioutil.WriteFile(filePath, body, 0654)
+			result <- filePath
+		}(url)
 	}
+
+	go func() {
+		for filePath := range result {
+			fmt.Println(filePath)
+		}
+	}()
+
+	wg.Wait()
 }

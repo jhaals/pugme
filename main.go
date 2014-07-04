@@ -19,7 +19,8 @@ func main() {
 			ShortName: "p",
 			Usage:     "Return a random pug",
 			Action: func(c *cli.Context) {
-				println(pugme.RandomPug())
+				pug := pugme.RandomPugs(1)
+				fmt.Println(pug[0])
 			},
 		},
 		{
