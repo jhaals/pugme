@@ -5,7 +5,7 @@ Me toying with cli in go
 
 Get pug urls
 
-    $ puginator pugs 5
+    $ pugme pugs 5
 
     http://28.media.tumblr.com/tumblr_lsxqgrCZNA1qzj2dvo1_500.jpg
     http://30.media.tumblr.com/tumblr_lqgsins4RV1qd97mjo1_500.jpg
@@ -15,4 +15,4 @@ Get pug urls
 
 Download 5 pugs
 
-    $ puginator download-pugs 5 /path/to/pugstore
+    $ pugme download-pugs 5 /path/to/pugstore
